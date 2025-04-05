@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Support for different file encodings:
+  - Added encoding parameter to FileReader, FileStreamer, and FileWriter
+  - Added encoding parameter to all file operation API endpoints
+  - Added proper error handling for encoding issues
+  - Set UTF-8 as the default encoding
+
 ## [0.2.0] - 2025-04-05
 
 ### Fixed

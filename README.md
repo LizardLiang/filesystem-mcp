@@ -15,6 +15,7 @@ SpiderFS MCP (Master Control Program) is a token-efficient file system server th
 - Read around matched content with configurable context
 - Stream large files in chunks (line-based and byte-based)
 - Efficient file writing with backup and atomic operations
+- Support for different file encodings
 
 ### Server Interface
 - FastAPI-based HTTP server
