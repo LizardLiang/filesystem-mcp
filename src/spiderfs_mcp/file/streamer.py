@@ -46,33 +46,33 @@ class FileStreamer:
             
             try:
                 with open(file_path, 'r', encoding=file_encoding) as f:
-                while True:
-                    # Read a chunk of lines
-                    lines = []
-                    for _ in range(self.chunk_size):
-                        line = f.readline()
-                        if not line:  # EOF
+                    while True:
+                        # Read a chunk of lines
+                        lines = []
+                        for _ in range(self.chunk_size):
+                            line = f.readline()
+                            if not line:  # EOF
+                                break
+                            lines.append(line)
+                            total_lines += 1
+                        
+                        # If we read something, yield it
+                        if lines:
+                            chunk_number += 1
+                            content_chunk = "".join(lines)
+                            
+                            # Create metadata for this chunk
+                            metadata = {
+                                "chunk_number": chunk_number,
+                                "lines_in_chunk": len(lines),
+                                "file_size": file_size,
+                                "lines_read_so_far": total_lines,
+                            }
+                            
+                            yield content_chunk, metadata
+                        else:
+                            # No more lines to read
                             break
-                        lines.append(line)
-                        total_lines += 1
-                    
-                    # If we read something, yield it
-                    if lines:
-                        chunk_number += 1
-                        content_chunk = "".join(lines)
-                        
-                        # Create metadata for this chunk
-                        metadata = {
-                            "chunk_number": chunk_number,
-                            "lines_in_chunk": len(lines),
-                            "file_size": file_size,
-                            "lines_read_so_far": total_lines,
-                        }
-                        
-                        yield content_chunk, metadata
-                    else:
-                        # No more lines to read
-                        break
             
             except UnicodeDecodeError as e:
                 yield "", {
@@ -96,16 +96,6 @@ class FileStreamer:
             file_path: Path to the file to stream
             byte_chunk_size: Size of each chunk in bytes
             binary_mode: Whether to open the file in binary mode
-            
-        Yields:
-            Tuple of (bytes_chunk, metadata)
-        """
-        """
-        Stream a file's contents in chunks of bytes
-        
-        Args:
-            file_path: Path to the file to stream
-            byte_chunk_size: Size of each chunk in bytes
             
         Yields:
             Tuple of (bytes_chunk, metadata)

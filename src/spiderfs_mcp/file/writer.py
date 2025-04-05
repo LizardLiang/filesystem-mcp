@@ -1,29 +1,41 @@
-from dataclasses import dataclass
-from typing import List, Optional, Dict, Any, Tuple
-from pathlib import Path
-import os
-import io
 import shutil
+import os
 import tempfile
 import filecmp
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, Any, Optional, Tuple, List
+from pathlib import Path
 
 
 @dataclass
 class LineEdit:
     """Represents an edit to be made to specific lines"""
+
     line_start: int  # 1-based line number
-    line_end: int    # 1-based line number, inclusive
+    line_end: int  # 1-based line number, inclusive
     new_content: str  # Content to replace the specified lines with
 
 
 @dataclass
 class FileWriteResult:
     """Result of a file write operation"""
+
     success: bool
     changed_lines: int = 0
     error: Optional[str] = None
     backup_path: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+
+    def __post_init__(self):
+        # Always generate metadata if not provided
+        if self.success and self.metadata is None:
+            self.metadata = {
+                "timestamp": datetime.now().isoformat(),
+                "changed_lines": self.changed_lines,
+                "backup_created": self.backup_path is not None,
+            }
 
 
 class FileWriter:
@@ -121,77 +133,76 @@ class FileWriter:
             try:
                 # Read the entire file
                 with open(file_path, 'r', encoding=file_encoding) as f:
-                lines = f.readlines()
-            
-            total_lines = len(lines)
-            changed_lines = 0
-            
-            # Apply edits
-            for edit in sorted_edits:
-                # Validate edit ranges
-                if edit.line_start > total_lines:
-                    return FileWriteResult(
-                        success=False,
-                        error=f"Line start {edit.line_start} is beyond the end of file ({total_lines} lines)"
-                    )
+                    lines = f.readlines()
                 
-                # Adjust for 0-based indexing
-                start_idx = edit.line_start - 1
-                end_idx = min(edit.line_end, total_lines)  # Cap at file length
+                total_lines = len(lines)
+                changed_lines = 0
                 
-                # Calculate number of lines being replaced
-                num_lines_to_replace = end_idx - start_idx
+                # Apply edits
+                for edit in sorted_edits:
+                    # Validate edit ranges
+                    if edit.line_start > total_lines:
+                        return FileWriteResult(
+                            success=False,
+                            error=f"Line start {edit.line_start} is beyond the end of file ({total_lines} lines)"
+                        )
+                    
+                    # Adjust for 0-based indexing
+                    start_idx = edit.line_start - 1
+                    end_idx = min(edit.line_end, total_lines)  # Cap at file length
+                    
+                    # Calculate number of lines being replaced
+                    num_lines_to_replace = end_idx - start_idx
+                    
+                    # Split new content into lines, ensuring trailing newline
+                    new_lines = edit.new_content.splitlines(True)  # Keep line endings
+                    
+                    # Ensure all lines end with newline
+                    for i, line in enumerate(new_lines):
+                        if not line.endswith('\n') and i < len(new_lines) - 1:
+                            new_lines[i] = line + '\n'
+                    
+                    # Apply the edit
+                    original_section = lines[start_idx:end_idx]
+                    lines[start_idx:end_idx] = new_lines
+                    
+                    # Check if the content actually changed
+                    if original_section != new_lines:
+                        # Count actual lines replaced for accurate reporting
+                        changed_lines += num_lines_to_replace
                 
-                # Split new content into lines, ensuring trailing newline
-                new_lines = edit.new_content.splitlines(True)  # Keep line endings
-                
-                # Ensure all lines end with newline
-                for i, line in enumerate(new_lines):
-                    if not line.endswith('\n') and i < len(new_lines) - 1:
-                        new_lines[i] = line + '\n'
-                
-                # Apply the edit
-                original_section = lines[start_idx:end_idx]
-                lines[start_idx:end_idx] = new_lines
-                
-                # Check if the content actually changed
-                if original_section != new_lines:
-                    # Count actual lines replaced for accurate reporting
-                    changed_lines += num_lines_to_replace
-            
                 # Create temp file for atomic write
                 with tempfile.NamedTemporaryFile(mode='w', encoding=file_encoding, delete=False) as temp_file:
-                temp_path = temp_file.name
-                temp_file.writelines(lines)
-            
-            # If no changes were made, don't bother writing
-            if changed_lines == 0 and filecmp.cmp(temp_path, file_path):
-                os.unlink(temp_path)  # Remove temp file
-                if backup_path:
-                    os.unlink(backup_path)  # Remove unnecessary backup
+                    temp_path = temp_file.name
+                    temp_file.writelines(lines)
+                
+                # If no changes were made, don't bother writing
+                if changed_lines == 0 and filecmp.cmp(temp_path, file_path):
+                    os.unlink(temp_path)  # Remove temp file
+                    if backup_path:
+                        os.unlink(backup_path)  # Remove unnecessary backup
+                    
+                    return FileWriteResult(
+                        success=True,
+                        changed_lines=0,
+                        backup_path=None,
+                        metadata={"unchanged": True}
+                    )
+                
+                # Atomic move temp file to original
+                shutil.move(temp_path, file_path)
                 
                 return FileWriteResult(
                     success=True,
-                    changed_lines=0,
-                    backup_path=None,
-                    metadata={"unchanged": True}
+                    changed_lines=changed_lines,
+                    backup_path=backup_path
                 )
-            
-            # Atomic move temp file to original
-            shutil.move(temp_path, file_path)
-            
-            return FileWriteResult(
-                success=True,
-                changed_lines=changed_lines,
-                backup_path=backup_path
-            )
-                
-                except UnicodeDecodeError as e:
+            except UnicodeDecodeError as e:
                 return FileWriteResult(
                     success=False,
                     error=f"Encoding error: {file_encoding} is not compatible with this file. {str(e)}"
                 )
-            except Exception as e:
+        except Exception as e:
             return FileWriteResult(
                 success=False,
                 error=f"Error applying edits: {str(e)}"
@@ -242,72 +253,69 @@ class FileWriter:
             try:
                 # Read the entire file
                 with open(file_path, 'r', encoding=file_encoding) as f:
-                content = f.read()
-            
-            # Check if the string exists
-            if old_string not in content:
-                # No need to make changes
-                if backup_path:
-                    os.unlink(backup_path)  # Remove unnecessary backup
+                    content = f.read()
                 
-                return FileWriteResult(
-                    success=True,
-                    changed_lines=0,
-                    backup_path=None,
-                    metadata={"unchanged": True}
-                )
-            
-            # Replace the string
-            if max_replacements > 0:
-                new_content = content.replace(old_string, new_string, max_replacements)
-                replacements = min(max_replacements, content.count(old_string))
-            else:
-                new_content = content.replace(old_string, new_string)
-                replacements = content.count(old_string)
-            
-            # If no changes were made, don't bother writing
-            if content == new_content:
-                if backup_path:
-                    os.unlink(backup_path)  # Remove unnecessary backup
+                # Check if the string exists
+                if old_string not in content:
+                    if backup_path:
+                        os.unlink(backup_path)  # Remove unnecessary backup
+                    
+                    return FileWriteResult(
+                        success=True,
+                        changed_lines=0,
+                        backup_path=None,
+                        metadata={"unchanged": True}
+                    )
                 
-                return FileWriteResult(
-                    success=True,
-                    changed_lines=0,
-                    backup_path=None,
-                    metadata={"unchanged": True}
-                )
-            
+                # Replace the string
+                if max_replacements > 0:
+                    new_content = content.replace(old_string, new_string, max_replacements)
+                    replacements = min(max_replacements, content.count(old_string))
+                else:
+                    new_content = content.replace(old_string, new_string)
+                    replacements = content.count(old_string)
+                
+                # If no changes were made
+                if content == new_content:
+                    if backup_path:
+                        os.unlink(backup_path)
+                    return FileWriteResult(
+                        success=True,
+                        changed_lines=0,
+                        backup_path=None,
+                        metadata={"unchanged": True}
+                    )
+                
                 # Create temp file for atomic write
                 with tempfile.NamedTemporaryFile(mode='w', encoding=file_encoding, delete=False) as temp_file:
-                temp_path = temp_file.name
-                temp_file.write(new_content)
-            
-            # Atomic move temp file to original
-            shutil.move(temp_path, file_path)
-            
-            # Count changed lines (more accurate method)
-            old_lines = content.splitlines()
-            new_lines = new_content.splitlines()
-            changed_lines = 0
-            for i, (old, new) in enumerate(zip(old_lines, new_lines)):
-                if old != new:
-                    changed_lines += 1
-            # Account for added or removed lines
-            changed_lines += abs(len(new_lines) - len(old_lines))
-            
-            return FileWriteResult(
-                success=True,
-                changed_lines=changed_lines,
-                backup_path=backup_path,
-                metadata={"replacements": replacements}
-            )
+                    temp_path = temp_file.name
+                    temp_file.write(new_content)
                 
-                except UnicodeDecodeError as e:
+                # Atomic move temp file to original
+                shutil.move(temp_path, file_path)
+                
+                # Count changed lines
+                old_lines = content.splitlines()
+                new_lines = new_content.splitlines()
+                changed_lines = 0
+                for i, (old, new) in enumerate(zip(old_lines, new_lines)):
+                    if old != new:
+                        changed_lines += 1
+                changed_lines += abs(len(new_lines) - len(old_lines))
+                
+                return FileWriteResult(
+                    success=True,
+                    changed_lines=changed_lines,
+                    backup_path=backup_path,
+                    metadata={"replacements": replacements}
+                )
+                
+            except UnicodeDecodeError as e:
                 return FileWriteResult(
                     success=False,
                     error=f"Encoding error: {file_encoding} is not compatible with this file. {str(e)}"
                 )
-            except Exception as e:
+        except Exception as e:
             return FileWriteResult(
                 success=False,
                 error=f"Error replacing string: {str(e)}"
