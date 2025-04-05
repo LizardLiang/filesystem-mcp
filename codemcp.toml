@@ -1,0 +1,8 @@
+# CodeMCP Configuration File
+# This file configures how CodeMCP interacts with this project
+
+[project]
+name = "SpiderFS MCP"
+description = "A token-efficient file system server for search, read, and write operations"
+
+# Add any project-specific configuration below
