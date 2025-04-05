@@ -29,7 +29,7 @@ class FileWriteResult:
 class FileWriter:
     """Handles efficient and safe file write operations"""
     
-    def __init__(self, create_backup: bool = True):
+    def __init__(self, create_backup: bool = True, default_encoding: str = 'utf-8'):
         """
         Initialize the file writer
         
@@ -37,6 +37,7 @@ class FileWriter:
             create_backup: Whether to create a backup before writing
         """
         self.create_backup = create_backup
+        self.default_encoding = default_encoding
     
     def _create_backup(self, file_path: str) -> Tuple[bool, Optional[str], Optional[str]]:
         """
@@ -61,7 +62,7 @@ class FileWriter:
         except Exception as e:
             return False, None, f"Error creating backup: {str(e)}"
     
-    def apply_line_edits(self, file_path: str, edits: List[LineEdit]) -> FileWriteResult:
+    def apply_line_edits(self, file_path: str, edits: List[LineEdit], encoding: Optional[str] = None) -> FileWriteResult:
         """
         Apply a list of line edits to a file
         
@@ -114,8 +115,12 @@ class FileWriter:
                         error=f"Invalid line range: {edit.line_start}-{edit.line_end}. End must be >= start"
                     )
             
-            # Read the entire file
-            with open(file_path, 'r', encoding='utf-8') as f:
+            # Use provided encoding or default
+            file_encoding = encoding or self.default_encoding
+            
+            try:
+                # Read the entire file
+                with open(file_path, 'r', encoding=file_encoding) as f:
                 lines = f.readlines()
             
             total_lines = len(lines)
@@ -154,8 +159,8 @@ class FileWriter:
                     # Count actual lines replaced for accurate reporting
                     changed_lines += num_lines_to_replace
             
-            # Create temp file for atomic write
-            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False) as temp_file:
+                # Create temp file for atomic write
+                with tempfile.NamedTemporaryFile(mode='w', encoding=file_encoding, delete=False) as temp_file:
                 temp_path = temp_file.name
                 temp_file.writelines(lines)
             
@@ -180,14 +185,19 @@ class FileWriter:
                 changed_lines=changed_lines,
                 backup_path=backup_path
             )
-            
-        except Exception as e:
+                
+                except UnicodeDecodeError as e:
+                return FileWriteResult(
+                    success=False,
+                    error=f"Encoding error: {file_encoding} is not compatible with this file. {str(e)}"
+                )
+            except Exception as e:
             return FileWriteResult(
                 success=False,
                 error=f"Error applying edits: {str(e)}"
             )
     
-    def replace_string(self, file_path: str, old_string: str, new_string: str, max_replacements: int = 0) -> FileWriteResult:
+    def replace_string(self, file_path: str, old_string: str, new_string: str, max_replacements: int = 0, encoding: Optional[str] = None) -> FileWriteResult:
         """
         Replace all occurrences of a string in a file
         
@@ -226,8 +236,12 @@ class FileWriter:
                         error=error
                     )
             
-            # Read the entire file
-            with open(file_path, 'r', encoding='utf-8') as f:
+            # Use provided encoding or default
+            file_encoding = encoding or self.default_encoding
+            
+            try:
+                # Read the entire file
+                with open(file_path, 'r', encoding=file_encoding) as f:
                 content = f.read()
             
             # Check if the string exists
@@ -263,8 +277,8 @@ class FileWriter:
                     metadata={"unchanged": True}
                 )
             
-            # Create temp file for atomic write
-            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False) as temp_file:
+                # Create temp file for atomic write
+                with tempfile.NamedTemporaryFile(mode='w', encoding=file_encoding, delete=False) as temp_file:
                 temp_path = temp_file.name
                 temp_file.write(new_content)
             
@@ -287,8 +301,13 @@ class FileWriter:
                 backup_path=backup_path,
                 metadata={"replacements": replacements}
             )
-            
-        except Exception as e:
+                
+                except UnicodeDecodeError as e:
+                return FileWriteResult(
+                    success=False,
+                    error=f"Encoding error: {file_encoding} is not compatible with this file. {str(e)}"
+                )
+            except Exception as e:
             return FileWriteResult(
                 success=False,
                 error=f"Error replacing string: {str(e)}"

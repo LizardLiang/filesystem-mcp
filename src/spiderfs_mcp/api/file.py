@@ -17,6 +17,7 @@ class ReadLineRangeRequest(BaseModel):
     path: str = Field(description="Path to the file to read")
     start_line: int = Field(ge=1, description="Start line number (1-based)")
     end_line: int = Field(ge=1, description="End line number (1-based, inclusive)")
+    encoding: Optional[str] = Field(None, description="File encoding (e.g., 'utf-8', 'latin-1')")
     
     @model_validator(mode='after')
     def validate_fields(self) -> 'ReadLineRangeRequest':
@@ -31,6 +32,7 @@ class ReadLineContextRequest(BaseModel):
     path: str = Field(description="Path to the file to read")
     line_number: int = Field(ge=1, description="Target line number to read context for")
     context_lines: int = Field(3, ge=0, description="Number of context lines before and after")
+    encoding: Optional[str] = Field(None, description="File encoding (e.g., 'utf-8', 'latin-1')")
     
     @model_validator(mode='after')
     def validate_fields(self) -> 'ReadLineContextRequest':
@@ -68,7 +70,7 @@ async def read_line_range(request: ReadLineRangeRequest) -> FileContentResponse:
     # Read the requested range
     reader = FileReader()
     line_range = LineRange(start=request.start_line, end=request.end_line)
-    result = reader.read_line_range(request.path, line_range)
+    result = reader.read_line_range(request.path, line_range, encoding=request.encoding)
     
     if result.error:
         raise HTTPException(status_code=400, detail=result.error)
@@ -99,7 +101,8 @@ async def read_line_context(request: ReadLineContextRequest) -> FileContentRespo
     result = reader.read_context_around_line(
         request.path, 
         request.line_number, 
-        request.context_lines
+        request.context_lines,
+        encoding=request.encoding
     )
     
     if result.error:
@@ -113,7 +116,7 @@ async def read_line_context(request: ReadLineContextRequest) -> FileContentRespo
 
 
 @router.get("/stream/lines/{file_path:path}")
-async def stream_file_by_lines(file_path: str, chunk_size: int = 1000):
+async def stream_file_by_lines(file_path: str, chunk_size: int = 1000, encoding: Optional[str] = None):
     """
     Stream a file's contents in chunks of lines
     """
@@ -130,7 +133,7 @@ async def stream_file_by_lines(file_path: str, chunk_size: int = 1000):
     streamer = FileStreamer(chunk_size=chunk_size)
     
     async def content_generator():
-        for content_chunk, metadata in streamer.stream_file_by_lines(file_path):
+        for content_chunk, metadata in streamer.stream_file_by_lines(file_path, encoding=encoding):
             # Create a JSON response for each chunk
             chunk_response = StreamChunkResponse(
                 chunk=content_chunk,
@@ -146,7 +149,7 @@ async def stream_file_by_lines(file_path: str, chunk_size: int = 1000):
 
 
 @router.get("/stream/bytes/{file_path:path}")
-async def stream_file_by_bytes(file_path: str, chunk_size: int = 8192):
+async def stream_file_by_bytes(file_path: str, chunk_size: int = 8192, binary_mode: bool = True):
     """
     Stream a file's raw bytes in chunks
     """
@@ -163,7 +166,7 @@ async def stream_file_by_bytes(file_path: str, chunk_size: int = 8192):
     streamer = FileStreamer()
     
     async def content_generator():
-        for chunk, _ in streamer.stream_file_by_bytes(file_path, chunk_size):
+        for chunk, _ in streamer.stream_file_by_bytes(file_path, chunk_size, binary_mode=binary_mode):
             yield chunk
     
     return StreamingResponse(
@@ -188,6 +191,7 @@ class ApplyLineEditsRequest(BaseModel):
     path: str = Field(description="Path to the file to edit")
     edits: List[LineEditRequest] = Field(description="List of edits to apply")
     create_backup: bool = Field(True, description="Whether to create a backup before writing")
+    encoding: Optional[str] = Field(None, description="File encoding (e.g., 'utf-8', 'latin-1')")
     
     @model_validator(mode='after')
     def validate_fields(self) -> 'ApplyLineEditsRequest':
@@ -204,6 +208,7 @@ class ReplaceStringRequest(BaseModel):
     new_string: str = Field(description="Replacement string")
     max_replacements: int = Field(0, ge=0, description="Maximum number of replacements (0 = unlimited)")
     create_backup: bool = Field(True, description="Whether to create a backup before writing")
+    encoding: Optional[str] = Field(None, description="File encoding (e.g., 'utf-8', 'latin-1')")
     
     @model_validator(mode='after')
     def validate_fields(self) -> 'ReplaceStringRequest':
@@ -248,7 +253,7 @@ async def apply_line_edits(request: ApplyLineEditsRequest) -> WriteResult:
     
     # Apply the edits
     writer = FileWriter(create_backup=request.create_backup)
-    result = writer.apply_line_edits(request.path, edits)
+    result = writer.apply_line_edits(request.path, edits, encoding=request.encoding)
     
     if not result.success and result.error:
         raise HTTPException(status_code=400, detail=result.error)
@@ -282,7 +287,8 @@ async def replace_string(request: ReplaceStringRequest) -> WriteResult:
         request.path,
         request.old_string,
         request.new_string,
-        request.max_replacements
+        request.max_replacements,
+        encoding=request.encoding
     )
     
     if not result.success and result.error:
