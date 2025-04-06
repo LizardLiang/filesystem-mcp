@@ -1,5 +1,20 @@
 # Project Milestones
 
+## 2025-04-05: Project Initialization
+
+### Core Setup
+- Added core project config files (.gitignore, pyproject.toml, pytest.ini)
+- Created project documentation (PRD.md, milestone.md)
+- Implemented core module structure (src/spiderfs_mcp/__init__.py)
+- Removed deprecated API implementation files (api/file.py, api/search.py)
+- Added test example files (test_commands.json)
+
+### Key Achievements
+- Established complete project structure
+- Set up documentation framework
+- Cleaned up deprecated code
+- Prepared test infrastructure
+
 ## 2024-04-05: Initial Setup
 
 ### Project Structure
