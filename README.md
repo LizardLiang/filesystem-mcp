@@ -27,14 +27,9 @@ SpiderFS MCP (Master Control Program) is a token-efficient file system server th
 - Support for different file encodings
 
 ### Server Interface
-- FastAPI-based HTTP server
-- JSON-based request/response format
-- Endpoints for:
-  - Content Search: Accept regex/string patterns, return matches with line numbers
-  - Fuzzy File Search: Find files and directories matching patterns across the filesystem
-  - Read: Accept line ranges or search context, return partial content
-  - Write: Accept line-based edits and string replacement operations
-  - Stream: Provide efficient streaming for large files
+- Uses MCP (Master Control Program) tool protocol
+- Communicates via stdin/stdout
+- Designed for integration with AI agents and other tools
 
 ## Getting Started
 
@@ -49,33 +44,54 @@ SpiderFS MCP (Master Control Program) is a token-efficient file system server th
 2. Install dependencies: `pip install -e .`
 3. Run the server: `python -m spiderfs_mcp.server`
 
-## API Endpoints
+## Available Tools
 
-The API is available at `/api/v1/` with the following endpoints:
+SpiderFS MCP provides the following tools through the MCP protocol:
 
-### Search
-- `POST /api/v1/search/content`: Search for content in files
-- `POST /api/v1/search/files`: Search for files/directories using fuzzy matching
+### `search_content`
+Search for content in files using ripgrep or Python fallback.
 
-### File Operations
-- `POST /api/v1/file/read/range`: Read a specific range of lines from a file
-- `POST /api/v1/file/read/context`: Read a line with context before and after
-- `GET /api/v1/file/stream/lines/{file_path}`: Stream a file by lines
-- `GET /api/v1/file/stream/bytes/{file_path}`: Stream a file by bytes
-- `POST /api/v1/file/write/lines`: Apply line-based edits to a file
-- `POST /api/v1/file/write/replace`: Replace strings in a file
+Parameters:
+- `path`: The file or directory path to search in
+- `pattern`: The search pattern (supports regex)
 
-## Using the Fuzzy File Search
+### `fuzzy_file_search`
+Search for files and directories using fuzzy matching.
 
-The fuzzy file search functionality allows for quick discovery of files and directories across the filesystem.
-
-### Parameters:
+Parameters:
 - `pattern`: The search pattern (string)
 - `root_path` (optional): Base directory to search from (default: system root)
 - `max_results` (optional): Maximum number of results to return (default: 5)
 - `include_dirs` (optional): Whether to include directories in search results (default: true)
 
-### Example Request:
+### `read_file`
+Read the contents of a file.
+
+Parameters:
+- `path`: The path to the file to read
+
+### `write_file`
+Write content to a file (replaces entire file).
+
+Parameters:
+- `path`: The path to the file to write
+- `content`: The content to write to the file
+
+### `edit_file`
+Apply line-based edits to a file.
+
+Parameters:
+- `path`: The path to the file to edit
+- `edits`: Array of edit objects with structure:
+  - `line_start`: Starting line number (1-based)
+  - `line_end`: Ending line number (inclusive)
+  - `new_content`: New content to replace the specified lines
+
+## Using the Fuzzy File Search
+
+The fuzzy file search functionality allows for quick discovery of files and directories across the filesystem.
+
+### Example Input:
 ```json
 {
   "pattern": "config",
@@ -84,14 +100,12 @@ The fuzzy file search functionality allows for quick discovery of files and dire
 }
 ```
 
-### Example Response:
-```json
-[
-  "C:\\Users\\username\\AppData\\Local\\Programs\\Python\\config.py",
-  "D:\\Projects\\webapp\\config\\settings.js",
-  "D:\\Projects\\webapp\\config",
-  "C:\\ProgramData\\config.ini"
-]
+### Example Output:
+```
+C:\Users\username\AppData\Local\Programs\Python\config.py
+D:\Projects\webapp\config\settings.js
+D:\Projects\webapp\config
+C:\ProgramData\config.ini
 ```
 
 ## Enhanced Logging
