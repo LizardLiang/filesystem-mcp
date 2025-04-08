@@ -12,7 +12,7 @@ SpiderFS MCP (Master Control Program) is a token-efficient file system server th
   - Token-efficient result format
 
 - **Fuzzy File Search** (New in v0.2.0):
-  - fd/fzf integration for interactive file/folder discovery
+  - fd integration for file/folder discovery (despite the filename being fzf.py)
   - Python-based file search fallback implementation
   - Returns top matches for AI agent selection (configurable)
   - Configurable search root (default: system root or all disks on Windows)
