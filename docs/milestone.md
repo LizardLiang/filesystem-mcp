@@ -129,11 +129,18 @@
 - Test suite passes most tests with high coverage
 - API is stable and well-documented
 - Code follows modern Python practices and PEP 8 style guide
+- New fuzzy file search feature planned for next release
 
 ## Next Milestone (v0.2.0)
-1. Implement transaction support for multiple file changes
-2. Add rate limiting and timeout controls
-3. Optimize token usage for high-volume operations
-4. Implement caching layer for frequently accessed files
-5. Complete remaining test coverage
-6. Enhance documentation and examples
+1. Implement fuzzy file search functionality:
+   - fzf integration for interactive file/folder discovery
+   - Python fallback implementation
+   - Multi-result selection (top 5 matches)
+   - Configurable search roots
+   - Windows-specific disk searching behavior
+2. Implement transaction support for multiple file changes
+3. Add rate limiting and timeout controls
+4. Optimize token usage for high-volume operations
+5. Implement caching layer for frequently accessed files
+6. Complete remaining test coverage
+7. Enhance documentation and examples

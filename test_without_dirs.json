@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "callTool",
+  "params": {
+    "name": "fuzzy_file_search",
+    "arguments": {
+      "pattern": "test",
+      "root_path": "D:\\Programing\\MCP\\SpiderFsMcp",
+      "max_results": 10,
+      "include_dirs": false
+    }
+  }
+}

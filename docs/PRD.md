@@ -6,11 +6,20 @@ SpiderFS MCP (Master Control Program) is a token-efficient file system server th
 ## Core Features
 
 ### 1. Search System
-- Primary: Ripgrep integration for high-performance search
-- Fallback: Python-based search implementation
-- Support regex patterns
-- Return line numbers and matched content
-- Token-efficient result format
+- **Content Search**:
+  - Primary: Ripgrep integration for high-performance search
+  - Fallback: Python-based search implementation
+  - Support regex patterns
+  - Return line numbers and matched content
+  - Token-efficient result format
+
+- **Fuzzy File Search**:
+  - Primary: fzf integration for interactive file/folder discovery
+  - Fallback: Python-based file search implementation
+  - Returns top 5 matches for AI agent selection
+  - Configurable search root (default: system root or all disks on Windows)
+  - Supports both exact and fuzzy matching
+  - Path-based filtering options
 
 ### 2. Partial File Operations
 - Read specific line ranges
@@ -61,9 +70,17 @@ SpiderFS MCP (Master Control Program) is a token-efficient file system server th
 - Phase 4: In progress (Token optimization at 87% of goal)
 
 ### Phase 1: Search Implementation
-- Ripgrep integration
-- Python fallback search
-- Result formatting
+- **Content Search**:
+  - Ripgrep integration
+  - Python fallback search
+  - Result formatting
+
+- **File Search**:
+  - fzf integration
+  - Python fallback implementation
+  - Multi-result selection support
+  - Path configuration system
+
 - Initial server setup
 
 ### Phase 2: Read Operations
@@ -87,6 +104,8 @@ SpiderFS MCP (Master Control Program) is a token-efficient file system server th
 |-------------------------|----------------|----------------|
 | Token Reduction        | >90%           | 92% achieved   |
 | Search Performance     | <2x ripgrep    | 1.8x           |
+| File Discovery Time    | <500ms         | TBD            |
+| Fuzzy Match Accuracy   | >90%           | TBD            |
 | Data Corruption        | 0 incidents    | 0 incidents    |
 | Large File Operations  | >1GB support   | 2GB validated  |
 | Test Coverage          | 95% by Q2      | 89% achieved   |
